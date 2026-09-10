@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="/" class="brand-logo"><div class="brand-icon">🎓</div><span>StudyGenie AI</span></a></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link"><span class="nav-icon">📤</span> Upload Notes</a>
+      <a href="/study-assistant" class="nav-link"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link active"><span class="nav-icon">✏️</span> Quizzes</a>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link"><span class="nav-icon">🔄</span> Revision</a>
+      <a href="/profile" class="nav-link"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button></div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <h1 style="font-size:18px;font-weight:700;margin:0;">MCQ Quiz</h1>
+      </div>
+      <span class="text-muted text-sm" id="user-display-name"></span>
+    </div>
+    <div class="page-content">
+      <!-- Generation Form -->
+      <div class="card mb-3" id="gen-section">
+        <div class="card-header">✏️ Generate Quiz</div>
+        <div class="card-body">
+          <form id="quiz-gen-form">
+            <div class="grid grid-3 mb-2">
+              <div class="form-group mb-0">
+                <label class="form-label">Subject</label>
+                <select id="gen-subject" class="form-control form-select"></select>
+              </div>
+              <div class="form-group mb-0">
+                <label class="form-label">Questions</label>
+                <select id="gen-count" class="form-control form-select">
+                  <option value="5">5</option>
+                  <option value="10" selected>10</option>
+                  <option value="15">15</option>
+                  <option value="20">20</option>
+                </select>
+              </div>
+              <div class="form-group mb-0">
+                <label class="form-label">Difficulty</label>
+                <select id="gen-difficulty" class="form-control form-select">
+                  <option value="easy">Easy</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Topic</label>
+              <input type="text" id="gen-topic" class="form-control" placeholder="e.g. Normalization, Deadlocks, TCP/IP..." required>
+            </div>
+            <button type="submit" class="btn btn-primary">Generate Quiz</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Quiz Area -->
+      <div id="quiz-section">
+        <div id="quiz-area" class="hidden"></div>
+        <div id="result-area" class="hidden mt-2"></div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script src="/static/js/quiz.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('subject_id')) { setTimeout(() => { document.getElementById('gen-subject').value = params.get('subject_id'); }, 600); }
+});
+</script>
+</body>
+</html>

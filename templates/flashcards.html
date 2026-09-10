@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcards — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="/" class="brand-logo"><div class="brand-icon">🎓</div><span>StudyGenie AI</span></a></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link"><span class="nav-icon">📤</span> Upload Notes</a>
+      <a href="/study-assistant" class="nav-link"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link active"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link"><span class="nav-icon">✏️</span> Quizzes</a>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link"><span class="nav-icon">🔄</span> Revision</a>
+      <a href="/profile" class="nav-link"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button></div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <h1 style="font-size:18px;font-weight:700;margin:0;">Flashcards</h1>
+      </div>
+      <span class="text-muted text-sm" id="user-display-name"></span>
+    </div>
+    <div class="page-content">
+      <div style="max-width:640px;margin:0 auto;">
+        <!-- Generator -->
+        <div class="card mb-3">
+          <div class="card-header">🃏 Generate Flashcards</div>
+          <div class="card-body">
+            <form id="fc-form">
+              <div class="grid grid-2 mb-2">
+                <div class="form-group mb-0">
+                  <label class="form-label">Subject</label>
+                  <select id="fc-subject" class="form-control form-select"></select>
+                </div>
+                <div class="form-group mb-0">
+                  <label class="form-label">Number of Cards</label>
+                  <select id="fc-count" class="form-control form-select">
+                    <option value="5">5 cards</option>
+                    <option value="10" selected>10 cards</option>
+                    <option value="15">15 cards</option>
+                    <option value="20">20 cards</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Topic</label>
+                <input type="text" id="fc-topic" class="form-control" placeholder="e.g. Normalization, Deadlocks..." required>
+              </div>
+              <button type="submit" class="btn btn-primary" id="fc-btn">Generate Flashcards</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Flashcard Viewer -->
+        <div id="fc-viewer" class="hidden">
+          <div class="card mb-2">
+            <div class="card-body text-center">
+              <div class="text-muted text-sm mb-2">Card <span id="fc-current">1</span> of <span id="fc-total">0</span></div>
+              <div class="flashcard-container mb-3">
+                <div class="flashcard" id="flashcard" onclick="flipCard()">
+                  <div class="flashcard-face flashcard-front" id="fc-front">
+                    <div id="fc-question">Question</div>
+                  </div>
+                  <div class="flashcard-face flashcard-back" id="fc-back">
+                    <div id="fc-answer">Answer</div>
+                  </div>
+                </div>
+              </div>
+              <div class="text-muted text-sm mb-3">👆 Click the card to flip</div>
+              <div class="flex justify-between items-center">
+                <button onclick="prevCard()" class="btn btn-secondary">← Previous</button>
+                <div>
+                  <span class="badge badge-gray" id="fc-difficulty"></span>
+                  <span class="badge badge-info ml-1" id="fc-topic-badge"></span>
+                </div>
+                <button onclick="nextCard()" class="btn btn-primary">Next →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script>
+let cards = [], cardIdx = 0;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  requireAuth();
+  await populateSubjectSelect(document.getElementById('fc-subject'));
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('subject_id')) document.getElementById('fc-subject').value = params.get('subject_id');
+
+  document.getElementById('fc-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('fc-btn');
+    btn.disabled = true; btn.textContent = 'Generating...';
+    showLoading('Creating flashcards...');
+    const { ok, data } = await api('/api/ai/flashcards', { method: 'POST', body: JSON.stringify({
+      subject_id: document.getElementById('fc-subject').value,
+      topic: document.getElementById('fc-topic').value,
+      count: parseInt(document.getElementById('fc-count').value),
+    })});
+    hideLoading(); btn.disabled = false; btn.textContent = 'Generate Flashcards';
+    if (!ok || !data.flashcards || !data.flashcards.length) { showToast(data.message || 'Failed to generate flashcards', 'error'); return; }
+    cards = data.flashcards; cardIdx = 0;
+    showToast(`${cards.length} flashcards generated!`, 'success');
+    document.getElementById('fc-viewer').classList.remove('hidden');
+    renderCard();
+  });
+});
+
+function renderCard() {
+  const c = cards[cardIdx];
+  if (!c) return;
+  document.getElementById('fc-current').textContent = cardIdx + 1;
+  document.getElementById('fc-total').textContent = cards.length;
+  document.getElementById('fc-question').textContent = c.question || '';
+  document.getElementById('fc-answer').textContent = c.answer || '';
+  document.getElementById('fc-difficulty').textContent = c.difficulty || '';
+  document.getElementById('fc-topic-badge').textContent = c.topic || '';
+  document.getElementById('flashcard').classList.remove('flipped');
+}
+function flipCard() { document.getElementById('flashcard').classList.toggle('flipped'); }
+function nextCard() { if (cardIdx < cards.length - 1) { cardIdx++; renderCard(); } else showToast('Last card!', 'info'); }
+function prevCard() { if (cardIdx > 0) { cardIdx--; renderCard(); } else showToast('First card!', 'info'); }
+</script>
+</body>
+</html>

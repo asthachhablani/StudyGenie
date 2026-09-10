@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Assistant — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="/" class="brand-logo"><div class="brand-icon">🎓</div><span>StudyGenie AI</span></a></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link"><span class="nav-icon">📤</span> Upload Notes</a>
+      <a href="/study-assistant" class="nav-link active"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link"><span class="nav-icon">✏️</span> Quizzes</a>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link"><span class="nav-icon">🔄</span> Revision</a>
+      <a href="/profile" class="nav-link"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button></div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <h1 style="font-size:18px;font-weight:700;margin:0;">AI Study Assistant</h1>
+      </div>
+      <select id="chat-subject" class="form-control form-select" style="width:auto;padding:6px 28px 6px 10px;font-size:13px;"></select>
+    </div>
+    <div class="page-content" style="height:calc(100vh - 70px);display:flex;flex-direction:column;padding-bottom:0;">
+      <div class="alert alert-info mb-2" style="flex-shrink:0;">
+        💡 Ask me anything: <em>"Explain normalization"</em> · <em>"Create a summary"</em> · <em>"Quiz me on paging"</em> · <em>"What should I revise?"</em>
+      </div>
+      <div class="chat-container" style="flex:1;">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-msg ai">
+            <div class="chat-avatar">🤖</div>
+            <div class="chat-bubble">
+              <strong>Hello! I'm StudyGenie AI 👋</strong><br>
+              I can help you understand topics, generate summaries, create flashcards, build quizzes, and create your study plan. Select a subject and ask me anything!
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <form id="chat-form" style="display:flex;gap:8px;flex:1;" onsubmit="return false;">
+            <input type="text" id="chat-input" class="form-control" placeholder="Ask a question or type 'quiz me on...' or 'summarize...'" style="flex:1;">
+            <button type="submit" class="btn btn-primary">Send</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script src="/static/js/assistant.js"></script>
+<script>
+// Pre-select subject from URL param
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const sid = params.get('subject_id');
+  if (sid) {
+    setTimeout(() => { document.getElementById('chat-subject').value = sid; }, 500);
+  }
+});
+</script>
+</body>
+</html>

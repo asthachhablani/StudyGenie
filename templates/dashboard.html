@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <a href="/" class="brand-logo">
+        <div class="brand-icon">🎓</div>
+        <span>StudyGenie AI</span>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link"><span class="nav-icon">📤</span> Upload Notes</a>
+      <div class="nav-section-label">AI Tools</div>
+      <a href="/study-assistant" class="nav-link"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link"><span class="nav-icon">✏️</span> Quizzes</a>
+      <div class="nav-section-label">Planning</div>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link"><span class="nav-icon">🔄</span> Revision</a>
+      <div class="nav-section-label">Account</div>
+      <a href="/profile" class="nav-link"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button>
+    </div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <h1 style="font-size:18px;font-weight:700;margin:0;">Dashboard</h1>
+      </div>
+      <div class="flex items-center gap-1">
+        <span class="text-muted text-sm" id="user-display-name"></span>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <!-- Stats Row -->
+      <div class="grid grid-4 mb-3">
+        <div class="stat-card">
+          <div class="stat-icon purple">📚</div>
+          <div><div class="stat-number" id="stat-subjects">—</div><div class="stat-label">Subjects</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue">📄</div>
+          <div><div class="stat-number" id="stat-docs">—</div><div class="stat-label">Documents</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">✅</div>
+          <div><div class="stat-number" id="stat-completed">—</div><div class="stat-label">Topics Mastered</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange">🏆</div>
+          <div><div class="stat-number" id="stat-score">—</div><div class="stat-label">Avg Quiz Score</div></div>
+        </div>
+      </div>
+
+      <div class="grid grid-3 mb-3">
+        <!-- Weak Topics -->
+        <div class="card">
+          <div class="card-header">⚠️ Weak Topics</div>
+          <div class="card-body" id="weak-topics-list">Loading...</div>
+          <div class="card-footer"><a href="/revision" class="btn btn-danger btn-sm">Get Revision Material</a></div>
+        </div>
+        <!-- Strong Topics -->
+        <div class="card">
+          <div class="card-header">💪 Strong Topics</div>
+          <div class="card-body" id="strong-topics-list">Loading...</div>
+        </div>
+        <!-- Exam Countdown -->
+        <div class="card">
+          <div class="card-header">⏰ Exam Countdown</div>
+          <div class="card-body" id="exam-countdown">Loading...</div>
+          <div class="card-footer"><a href="/profile" class="btn btn-secondary btn-sm">Set Exam Date</a></div>
+        </div>
+      </div>
+
+      <div class="grid grid-2 mb-3">
+        <!-- Today's Tasks -->
+        <div class="card">
+          <div class="card-header">📅 Today's Study Tasks</div>
+          <div class="card-body" id="today-tasks">Loading...</div>
+          <div class="card-footer"><a href="/study-plan" class="btn btn-primary btn-sm">View Full Plan</a></div>
+        </div>
+        <!-- Recent Quiz Results -->
+        <div class="card">
+          <div class="card-header">📊 Recent Quiz Results</div>
+          <div class="card-body" id="recent-results">Loading...</div>
+          <div class="card-footer"><a href="/quiz" class="btn btn-outline btn-sm">Take a Quiz</a></div>
+        </div>
+      </div>
+
+      <!-- Subjects -->
+      <div class="card mb-3">
+        <div class="card-header flex justify-between items-center">
+          <span>📚 Your Subjects</span>
+          <a href="/subjects" class="btn btn-primary btn-sm">Manage Subjects</a>
+        </div>
+        <div class="card-body" id="subject-list">Loading...</div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="card">
+        <div class="card-header">⚡ Quick Actions</div>
+        <div class="card-body">
+          <div class="flex" style="gap:10px;flex-wrap:wrap;">
+            <a href="/upload" class="btn btn-primary">📤 Upload Notes</a>
+            <a href="/quiz" class="btn btn-outline">✏️ Take Quiz</a>
+            <a href="/study-assistant" class="btn btn-outline">🤖 Ask AI</a>
+            <a href="/flashcards" class="btn btn-outline">🃏 Flashcards</a>
+            <a href="/summary" class="btn btn-outline">📋 Summary</a>
+            <a href="/study-plan" class="btn btn-outline">📅 Study Plan</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upload Notes — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="/" class="brand-logo"><div class="brand-icon">🎓</div><span>StudyGenie AI</span></a></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link active"><span class="nav-icon">📤</span> Upload Notes</a>
+      <a href="/study-assistant" class="nav-link"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link"><span class="nav-icon">✏️</span> Quizzes</a>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link"><span class="nav-icon">🔄</span> Revision</a>
+      <a href="/profile" class="nav-link"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button></div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <h1 style="font-size:18px;font-weight:700;margin:0;">Upload Study Notes</h1>
+      </div>
+      <span class="text-muted text-sm" id="user-display-name"></span>
+    </div>
+    <div class="page-content">
+      <div style="max-width:640px;margin:0 auto;">
+        <div class="card">
+          <div class="card-header">📤 Upload PDF Document</div>
+          <div class="card-body">
+            <div id="upload-status"></div>
+            <form id="upload-form">
+              <div class="form-group">
+                <label class="form-label">Subject</label>
+                <select id="upload-subject" class="form-control form-select">
+                  <option value="">Loading subjects...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">PDF File</label>
+                <input type="file" id="upload-file" class="form-control" accept=".pdf" required>
+                <div class="form-hint">PDF only · Max 50 MB</div>
+              </div>
+              <div id="drop-zone" style="border:2px dashed var(--border);border-radius:8px;padding:40px;text-align:center;color:var(--text-muted);margin-bottom:16px;cursor:pointer;" onclick="document.getElementById('upload-file').click()">
+                <div style="font-size:40px;margin-bottom:8px;">📄</div>
+                <div>Click to select PDF or drag and drop here</div>
+              </div>
+              <button type="submit" class="btn btn-primary w-full" id="upload-btn">Upload &amp; Process</button>
+            </form>
+
+            <div id="progress-section" style="display:none;margin-top:20px;">
+              <div class="alert alert-info">
+                <span>⚙️ </span><span id="progress-msg">Processing document...</span>
+              </div>
+              <div class="progress-bar-track mt-1">
+                <div class="progress-bar-fill" id="progress-fill" style="width:0%;transition:width 0.5s;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Uploads -->
+        <div class="card mt-2">
+          <div class="card-header">📋 Recent Uploads</div>
+          <div class="card-body" id="recent-uploads">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  requireAuth();
+  await populateSubjectSelect(document.getElementById('upload-subject'), 'Select Subject');
+
+  // Pre-select from URL param
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('subject_id')) document.getElementById('upload-subject').value = params.get('subject_id');
+
+  loadRecentUploads();
+
+  // Drag and drop
+  const dz = document.getElementById('drop-zone');
+  const fi = document.getElementById('upload-file');
+  dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.style.borderColor = 'var(--primary)'; });
+  dz.addEventListener('dragleave', () => dz.style.borderColor = 'var(--border)');
+  dz.addEventListener('drop', (e) => { e.preventDefault(); dz.style.borderColor = 'var(--border)'; if (e.dataTransfer.files[0]) { fi.files = e.dataTransfer.files; dz.textContent = e.dataTransfer.files[0].name; } });
+  fi.addEventListener('change', () => { if (fi.files[0]) dz.textContent = fi.files[0].name; });
+
+  document.getElementById('upload-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const file = fi.files[0];
+    if (!file) { showToast('Please select a file', 'error'); return; }
+    if (!file.name.endsWith('.pdf')) { showToast('Only PDF files allowed', 'error'); return; }
+
+    const btn = document.getElementById('upload-btn');
+    btn.disabled = true; btn.textContent = 'Uploading...';
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('subject_id', document.getElementById('upload-subject').value);
+
+    const { ok, data } = await apiForm('/api/documents/upload', fd);
+    if (!ok) { showToast(data.error || 'Upload failed', 'error'); btn.disabled = false; btn.textContent = 'Upload & Process'; return; }
+
+    showToast('File uploaded! Starting processing...', 'success');
+    const docId = data.document.id;
+    document.getElementById('progress-section').style.display = 'block';
+    animateProgress();
+
+    // Auto-trigger processing
+    const { ok: pok, data: pd } = await api(`/api/documents/${docId}/process`, { method: 'POST' });
+    if (!pok) { showToast('Processing trigger failed', 'error'); }
+
+    btn.disabled = false; btn.textContent = 'Upload & Process';
+    loadRecentUploads();
+  });
+});
+
+function animateProgress() {
+  let w = 0;
+  const fill = document.getElementById('progress-fill');
+  const msg = document.getElementById('progress-msg');
+  const msgs = ['Extracting text...', 'Cleaning content...', 'Generating chunks...', 'Creating embeddings...', 'Indexing in vector store...'];
+  let step = 0;
+  const timer = setInterval(() => {
+    w = Math.min(w + 3, 90);
+    fill.style.width = w + '%';
+    if (step < msgs.length && w > step * 18) { msg.textContent = msgs[step]; step++; }
+    if (w >= 90) clearInterval(timer);
+  }, 300);
+}
+
+async function loadRecentUploads() {
+  const { ok, data } = await api('/api/documents');
+  const el = document.getElementById('recent-uploads');
+  if (!ok) { el.innerHTML = '<p class="text-muted">Could not load.</p>'; return; }
+  const docs = data.documents || [];
+  if (!docs.length) { el.innerHTML = '<p class="text-muted">No documents uploaded yet.</p>'; return; }
+  el.innerHTML = docs.slice(0, 10).map(d => {
+    const sb = { uploaded: 'badge-warning', processing: 'badge-info', processed: 'badge-success', failed: 'badge-danger' }[d.status] || 'badge-gray';
+    return `<div class="flex items-center justify-between mb-1" style="padding:8px;background:var(--bg);border-radius:6px;">
+      <span class="text-sm fw-700">${d.filename}</span>
+      <div class="flex gap-1 items-center">
+        <span class="badge ${sb}">${d.status}</span>
+        ${d.status === 'uploaded' ? `<button onclick="processDoc('${d.id}')" class="btn btn-primary btn-sm">Process</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function processDoc(docId) {
+  const { ok } = await api(`/api/documents/${docId}/process`, { method: 'POST' });
+  if (ok) showToast('Processing started!', 'success'); else showToast('Failed', 'error');
+  setTimeout(loadRecentUploads, 2000);
+}
+</script>
+</body>
+</html>

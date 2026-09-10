@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subjects — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="/" class="brand-logo"><div class="brand-icon">🎓</div><span>StudyGenie AI</span></a></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link active"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link"><span class="nav-icon">📤</span> Upload Notes</a>
+      <a href="/study-assistant" class="nav-link"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link"><span class="nav-icon">✏️</span> Quizzes</a>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link"><span class="nav-icon">🔄</span> Revision</a>
+      <a href="/profile" class="nav-link"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button></div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <h1 style="font-size:18px;font-weight:700;margin:0;">Subjects</h1>
+      </div>
+      <span class="text-muted text-sm" id="user-display-name"></span>
+    </div>
+    <div class="page-content">
+
+      <!-- Create Subject -->
+      <div class="card mb-3">
+        <div class="card-header">➕ Create New Subject</div>
+        <div class="card-body">
+          <form id="create-subject-form" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group mb-0 flex-1">
+              <label class="form-label">Subject Name</label>
+              <input type="text" id="sub-name" class="form-control" placeholder="e.g. DBMS, Operating Systems" required>
+            </div>
+            <div class="form-group mb-0 flex-1">
+              <label class="form-label">Description (optional)</label>
+              <input type="text" id="sub-desc" class="form-control" placeholder="Short description">
+            </div>
+            <button type="submit" class="btn btn-primary">Create Subject</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Subject List -->
+      <div id="subjects-grid" class="grid grid-3">
+        <div style="text-align:center;padding:40px;grid-column:1/-1;" class="text-muted">Loading subjects...</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Edit Modal -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;">
+  <div class="card" style="width:440px;max-width:95vw;">
+    <div class="card-header">✏️ Edit Subject</div>
+    <div class="card-body">
+      <input type="hidden" id="edit-id">
+      <div class="form-group"><label class="form-label">Name</label><input type="text" id="edit-name" class="form-control"></div>
+      <div class="form-group"><label class="form-label">Description</label><input type="text" id="edit-desc" class="form-control"></div>
+    </div>
+    <div class="card-footer flex gap-1">
+      <button onclick="saveEdit()" class="btn btn-primary">Save</button>
+      <button onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  requireAuth();
+  loadSubjects();
+
+  document.getElementById('create-subject-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('[type=submit]');
+    btn.disabled = true;
+    const { ok, data } = await api('/api/subjects', { method: 'POST', body: JSON.stringify({ name: document.getElementById('sub-name').value, description: document.getElementById('sub-desc').value }) });
+    btn.disabled = false;
+    if (ok) { showToast('Subject created!', 'success'); document.getElementById('sub-name').value = ''; document.getElementById('sub-desc').value = ''; loadSubjects(); }
+    else showToast(data.error || 'Failed to create subject', 'error');
+  });
+});
+
+async function loadSubjects() {
+  const { ok, data } = await api('/api/subjects');
+  const grid = document.getElementById('subjects-grid');
+  if (!ok) { grid.innerHTML = '<div class="alert alert-danger">Could not load subjects.</div>'; return; }
+  const subs = data.subjects || [];
+  if (!subs.length) { grid.innerHTML = '<div style="text-align:center;padding:40px;grid-column:1/-1;" class="text-muted">No subjects yet. Create your first subject above!</div>'; return; }
+  grid.innerHTML = subs.map(s => `
+    <div class="card">
+      <div class="card-body">
+        <h3 style="font-size:17px;font-weight:700;margin-bottom:4px;">${s.name}</h3>
+        <p class="text-muted text-sm mb-2">${s.description || 'No description'}</p>
+        <p class="text-sm text-muted mb-2">Created: ${new Date(s.created_at).toLocaleDateString()}</p>
+      </div>
+      <div class="card-footer flex gap-1 flex-wrap">
+        <a href="/subjects/${s.id}" class="btn btn-primary btn-sm">📂 Open</a>
+        <button onclick="editSubject('${s.id}','${s.name.replace(/'/g,'\\'')}','${(s.description||'').replace(/'/g,'\\'')}' )" class="btn btn-secondary btn-sm">✏️ Edit</button>
+        <button onclick="deleteSubject('${s.id}')" class="btn btn-danger btn-sm">🗑️ Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+function editSubject(id, name, desc) {
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-name').value = name;
+  document.getElementById('edit-desc').value = desc;
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+function closeModal() { document.getElementById('edit-modal').style.display = 'none'; }
+async function saveEdit() {
+  const id = document.getElementById('edit-id').value;
+  const { ok, data } = await api(`/api/subjects/${id}`, { method: 'PUT', body: JSON.stringify({ name: document.getElementById('edit-name').value, description: document.getElementById('edit-desc').value }) });
+  closeModal();
+  if (ok) { showToast('Subject updated!', 'success'); loadSubjects(); } else showToast(data.error || 'Update failed', 'error');
+}
+async function deleteSubject(id) {
+  if (!confirm('Delete this subject? This cannot be undone.')) return;
+  const { ok } = await api(`/api/subjects/${id}`, { method: 'DELETE' });
+  if (ok) { showToast('Subject deleted', 'info'); loadSubjects(); } else showToast('Delete failed', 'error');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subject — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="/" class="brand-logo"><div class="brand-icon">🎓</div><span>StudyGenie AI</span></a></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link active"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link"><span class="nav-icon">📤</span> Upload Notes</a>
+      <a href="/study-assistant" class="nav-link"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link"><span class="nav-icon">✏️</span> Quizzes</a>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link"><span class="nav-icon">🔄</span> Revision</a>
+      <a href="/profile" class="nav-link"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button></div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <a href="/subjects" style="color:var(--text-muted);text-decoration:none;font-size:14px;">Subjects</a>
+        <span style="color:var(--text-muted);">/</span>
+        <h1 style="font-size:18px;font-weight:700;margin:0;" id="subject-title">Loading...</h1>
+      </div>
+      <span class="text-muted text-sm" id="user-display-name"></span>
+    </div>
+    <div class="page-content">
+      <div id="subject-desc" class="text-muted text-sm mb-3"></div>
+
+      <!-- Documents -->
+      <div class="card mb-3">
+        <div class="card-header flex justify-between items-center">
+          <span>📄 Study Documents</span>
+          <a id="upload-link" href="/upload" class="btn btn-primary btn-sm">📤 Upload PDF</a>
+        </div>
+        <div class="card-body" id="docs-list">Loading...</div>
+      </div>
+
+      <!-- Progress -->
+      <div class="card mb-3">
+        <div class="card-header">📊 Topic Progress</div>
+        <div class="card-body" id="progress-list">Loading...</div>
+      </div>
+
+      <!-- Quick actions for this subject -->
+      <div class="card">
+        <div class="card-header">⚡ AI Tools for This Subject</div>
+        <div class="card-body">
+          <div class="flex" style="gap:10px;flex-wrap:wrap;" id="subject-actions">
+            <span class="text-muted text-sm">Loading subject...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script>
+const subjectId = window.location.pathname.split('/').pop();
+
+document.addEventListener('DOMContentLoaded', async () => {
+  requireAuth();
+  const { ok, data } = await api(`/api/subjects/${subjectId}`);
+  if (!ok) { showToast('Subject not found', 'error'); return; }
+
+  const sub = data.subject;
+  document.getElementById('subject-title').textContent = sub.name;
+  document.getElementById('subject-desc').textContent = sub.description || '';
+  document.title = `${sub.name} — StudyGenie AI`;
+  document.getElementById('upload-link').href = `/upload?subject_id=${subjectId}`;
+
+  // Subject actions
+  document.getElementById('subject-actions').innerHTML = `
+    <a href="/study-assistant?subject_id=${subjectId}" class="btn btn-primary">🤖 Ask AI</a>
+    <a href="/summary?subject_id=${subjectId}" class="btn btn-outline">📋 Summary</a>
+    <a href="/flashcards?subject_id=${subjectId}" class="btn btn-outline">🃏 Flashcards</a>
+    <a href="/quiz?subject_id=${subjectId}" class="btn btn-outline">✏️ Quiz</a>
+    <a href="/study-plan?subject_id=${subjectId}" class="btn btn-outline">📅 Study Plan</a>
+    <a href="/revision?subject_id=${subjectId}" class="btn btn-outline">🔄 Revision</a>`;
+
+  // Documents
+  const docs = data.documents || [];
+  const docsEl = document.getElementById('docs-list');
+  if (!docs.length) {
+    docsEl.innerHTML = '<p class="text-muted">No documents uploaded yet. <a href="/upload">Upload your first PDF</a>.</p>';
+  } else {
+    docsEl.innerHTML = docs.map(d => {
+      const statusBadge = { uploaded: 'badge-warning', processing: 'badge-info', processed: 'badge-success', failed: 'badge-danger' }[d.status] || 'badge-gray';
+      return `<div class="flex items-center justify-between mb-2" style="padding:10px;background:var(--bg);border-radius:8px;">
+        <div>
+          <span class="fw-700">${d.filename}</span>
+          <span class="badge ${statusBadge} ml-1">${d.status}</span>
+          ${d.chunk_count ? `<span class="text-muted text-sm"> · ${d.chunk_count} chunks</span>` : ''}
+        </div>
+        <div class="flex gap-1">
+          ${d.status === 'uploaded' ? `<button onclick="processDoc('${d.id}')" class="btn btn-primary btn-sm">Process</button>` : ''}
+          <button onclick="deleteDoc('${d.id}')" class="btn btn-danger btn-sm">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Progress
+  const progress = data.progress || [];
+  const progressEl = document.getElementById('progress-list');
+  if (!progress.length) {
+    progressEl.innerHTML = '<p class="text-muted">No quiz attempts yet. <a href="/quiz">Take a quiz</a> to track progress.</p>';
+  } else {
+    progressEl.innerHTML = progress.map(p => {
+      const clr = p.strength === 'strong' ? 'success' : p.strength === 'weak' ? 'danger' : 'warning';
+      return `<div class="flex items-center gap-2 mb-2">
+        <span class="flex-1 fw-700">${p.topic}</span>
+        <div class="progress-bar-track" style="width:120px;"><div class="progress-bar-fill" style="width:${p.quiz_score}%;background:var(--${clr === 'success' ? 'success' : clr === 'danger' ? 'danger' : 'warning'});"></div></div>
+        <span class="text-sm">${p.quiz_score}%</span>
+        <span class="badge badge-${clr}">${p.strength}</span>
+      </div>`;
+    }).join('');
+  }
+});
+
+async function processDoc(docId) {
+  const { ok, data } = await api(`/api/documents/${docId}/process`, { method: 'POST' });
+  if (ok) { showToast('Processing started! Refresh in a moment.', 'success'); }
+  else showToast(data.error || 'Processing failed', 'error');
+}
+
+async function deleteDoc(docId) {
+  if (!confirm('Delete this document?')) return;
+  const { ok } = await api(`/api/documents/${docId}`, { method: 'DELETE' });
+  if (ok) { showToast('Document deleted', 'info'); window.location.reload(); }
+  else showToast('Delete failed', 'error');
+}
+</script>
+</body>
+</html>

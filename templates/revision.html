@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revision — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="/" class="brand-logo"><div class="brand-icon">🎓</div><span>StudyGenie AI</span></a></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link"><span class="nav-icon">📤</span> Upload Notes</a>
+      <a href="/study-assistant" class="nav-link"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link"><span class="nav-icon">✏️</span> Quizzes</a>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link active"><span class="nav-icon">🔄</span> Revision</a>
+      <a href="/profile" class="nav-link"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button></div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <h1 style="font-size:18px;font-weight:700;margin:0;">Revision Material</h1>
+      </div>
+      <span class="text-muted text-sm" id="user-display-name"></span>
+    </div>
+    <div class="page-content">
+      <div style="max-width:800px;margin:0 auto;">
+        <div class="card mb-3">
+          <div class="card-header">🔄 Generate Revision Material</div>
+          <div class="card-body">
+            <div class="alert alert-info mb-2">Revision material is generated based on your quiz performance and weak topic analysis.</div>
+            <form id="rev-form">
+              <div class="form-group">
+                <label class="form-label">Subject</label>
+                <select id="rev-subject" class="form-control form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Additional Topics (optional, comma-separated)</label>
+                <input type="text" id="rev-topics" class="form-control" placeholder="e.g. Normalization, Paging, Deadlocks">
+              </div>
+              <button type="submit" class="btn btn-primary" id="rev-btn">Generate Revision Material</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="revision-result" class="hidden">
+          <div class="card">
+            <div class="card-header flex justify-between items-center">
+              <span>📝 Revision Notes</span>
+              <button onclick="copyText('revision-output')" class="btn btn-secondary btn-sm">📋 Copy</button>
+            </div>
+            <div class="card-body">
+              <div id="weak-topics-display" class="mb-2"></div>
+              <div id="revision-output"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  requireAuth();
+  await populateSubjectSelect(document.getElementById('rev-subject'));
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('subject_id')) document.getElementById('rev-subject').value = params.get('subject_id');
+
+  document.getElementById('rev-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('rev-btn');
+    btn.disabled = true; btn.textContent = 'Generating...';
+    showLoading('Generating revision material...');
+
+    const topicsRaw = document.getElementById('rev-topics').value;
+    const topics = topicsRaw ? topicsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    const { ok, data } = await api('/api/ai/revision', { method: 'POST', body: JSON.stringify({
+      subject_id: document.getElementById('rev-subject').value,
+      topics,
+    })});
+    hideLoading(); btn.disabled = false; btn.textContent = 'Generate Revision Material';
+
+    if (!ok) { showToast(data.error || 'Failed', 'error'); return; }
+
+    document.getElementById('revision-result').classList.remove('hidden');
+
+    const wtEl = document.getElementById('weak-topics-display');
+    if (data.weak_topics && data.weak_topics.length) {
+      wtEl.innerHTML = '<strong>Weak topics being revised:</strong> ' + data.weak_topics.map(t => `<span class="badge badge-danger mr-1">${t}</span>`).join('');
+    }
+    renderAI(data.revision || 'No revision material generated.', document.getElementById('revision-output'));
+    document.getElementById('revision-result').scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+function copyText(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.innerText).then(() => showToast('Copied!', 'success'));
+}
+</script>
+</body>
+</html>

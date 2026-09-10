@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="/" class="brand-logo"><div class="brand-icon">🎓</div><span>StudyGenie AI</span></a></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link"><span class="nav-icon">📤</span> Upload Notes</a>
+      <a href="/study-assistant" class="nav-link"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link"><span class="nav-icon">✏️</span> Quizzes</a>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link"><span class="nav-icon">🔄</span> Revision</a>
+      <a href="/profile" class="nav-link active"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button></div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <h1 style="font-size:18px;font-weight:700;margin:0;">Profile</h1>
+      </div>
+      <span class="text-muted text-sm" id="user-display-name"></span>
+    </div>
+    <div class="page-content">
+      <div style="max-width:640px;margin:0 auto;">
+
+        <!-- User Info -->
+        <div class="card mb-3">
+          <div class="card-header">👤 Your Account</div>
+          <div class="card-body" id="profile-info">Loading...</div>
+        </div>
+
+        <!-- Set Exam Date -->
+        <div class="card mb-3">
+          <div class="card-header">⏰ Set Exam Date</div>
+          <div class="card-body">
+            <form id="exam-form">
+              <div class="form-group">
+                <label class="form-label">Subject Name</label>
+                <input type="text" id="exam-subject" class="form-control" placeholder="e.g. DBMS, Operating Systems" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Exam Date</label>
+                <input type="date" id="exam-date-input" class="form-control" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Exam Date</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- AI Status -->
+        <div class="card mb-3">
+          <div class="card-header">🤖 AI Services Status</div>
+          <div class="card-body" id="ai-status">Loading...</div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card">
+          <div class="card-header" style="color:var(--danger);">⚠️ Danger Zone</div>
+          <div class="card-body">
+            <button onclick="logout()" class="btn btn-danger">Logout from All Devices</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  requireAuth();
+
+  // Load user profile
+  const { ok, data } = await api('/api/auth/me');
+  if (ok) {
+    const u = data.user;
+    document.getElementById('profile-info').innerHTML = `
+      <div class="flex items-center gap-2 mb-2">
+        <div style="width:56px;height:56px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:700;">
+          ${u.name.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <div class="fw-700" style="font-size:17px;">${u.name}</div>
+          <div class="text-muted text-sm">${u.email}</div>
+          <div class="text-muted text-sm">Member since ${new Date(u.created_at).toLocaleDateString()}</div>
+        </div>
+      </div>
+      ${Object.keys(u.exam_dates || {}).length ? '<strong class="text-sm">Exam Dates:</strong><br>' + Object.entries(u.exam_dates).map(([s,d]) => `<span class="badge badge-info mr-1">${s}: ${d}</span>`).join(' ') : ''}`;
+  }
+
+  // AI Status
+  const { ok: aok, data: ad } = await api('/api/ai/status');
+  if (aok) {
+    const ibm = ad.ibm; const groq = ad.groq;
+    document.getElementById('ai-status').innerHTML = `
+      <div class="flex gap-2 flex-wrap">
+        <div class="flex items-center gap-1">
+          <span style="width:10px;height:10px;border-radius:50%;background:${ibm.configured ? 'var(--success)' : 'var(--danger)'};display:inline-block;"></span>
+          <span class="text-sm">IBM watsonx.ai ${ibm.configured ? '(Connected)' : '(Not configured)'}</span>
+          ${ibm.configured ? `<span class="badge badge-success">Model: ${ibm.model_id}</span>` : '<span class="badge badge-warning">Set IBM credentials in .env</span>'}
+        </div>
+        <div class="flex items-center gap-1">
+          <span style="width:10px;height:10px;border-radius:50%;background:${groq.configured ? 'var(--success)' : 'var(--danger)'};display:inline-block;"></span>
+          <span class="text-sm">Groq ${groq.configured ? '(Connected)' : '(Not configured)'}</span>
+          ${groq.configured ? `<span class="badge badge-success">Model: ${groq.model}</span>` : '<span class="badge badge-warning">Set GROQ_API_KEY in .env</span>'}
+        </div>
+        <div class="flex items-center gap-1">
+          <span style="width:10px;height:10px;border-radius:50%;background:${ibm.orchestrate_configured ? 'var(--success)' : '#94a3b8'};display:inline-block;"></span>
+          <span class="text-sm">IBM Orchestrate ${ibm.orchestrate_configured ? '(Connected)' : '(Optional — not configured)'}</span>
+        </div>
+      </div>`;
+  }
+
+  // Exam date form
+  document.getElementById('exam-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { ok } = await api('/api/dashboard/exam-date', { method: 'POST', body: JSON.stringify({
+      subject_name: document.getElementById('exam-subject').value,
+      exam_date: document.getElementById('exam-date-input').value,
+    })});
+    if (ok) { showToast('Exam date saved!', 'success'); window.location.reload(); }
+    else showToast('Failed to save exam date', 'error');
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Summaries — StudyGenie AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="/" class="brand-logo"><div class="brand-icon">🎓</div><span>StudyGenie AI</span></a></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/subjects" class="nav-link"><span class="nav-icon">📚</span> Subjects</a>
+      <a href="/upload" class="nav-link"><span class="nav-icon">📤</span> Upload Notes</a>
+      <a href="/study-assistant" class="nav-link"><span class="nav-icon">🤖</span> Study Assistant</a>
+      <a href="/summary" class="nav-link active"><span class="nav-icon">📋</span> Summaries</a>
+      <a href="/flashcards" class="nav-link"><span class="nav-icon">🃏</span> Flashcards</a>
+      <a href="/quiz" class="nav-link"><span class="nav-icon">✏️</span> Quizzes</a>
+      <a href="/study-plan" class="nav-link"><span class="nav-icon">📅</span> Study Plan</a>
+      <a href="/revision" class="nav-link"><span class="nav-icon">🔄</span> Revision</a>
+      <a href="/profile" class="nav-link"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button onclick="logout()" class="btn btn-secondary w-full btn-sm">🚪 Logout</button></div>
+  </aside>
+  <div class="overlay-backdrop" id="backdrop"></div>
+  <main class="main-content">
+    <div class="top-bar">
+      <div class="flex items-center gap-1">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');">☰</button>
+        <h1 style="font-size:18px;font-weight:700;margin:0;">Generate Summary</h1>
+      </div>
+      <span class="text-muted text-sm" id="user-display-name"></span>
+    </div>
+    <div class="page-content">
+      <div style="max-width:800px;margin:0 auto;">
+        <div class="card mb-3">
+          <div class="card-header">📋 Summary Generator</div>
+          <div class="card-body">
+            <form id="summary-form">
+              <div class="grid grid-2 mb-2">
+                <div class="form-group mb-0">
+                  <label class="form-label">Subject</label>
+                  <select id="sum-subject" class="form-control form-select"></select>
+                </div>
+                <div class="form-group mb-0">
+                  <label class="form-label">Summary Type</label>
+                  <select id="sum-type" class="form-control form-select">
+                    <option value="short">Short Summary</option>
+                    <option value="detailed" selected>Detailed Summary</option>
+                    <option value="key_points">Key Points</option>
+                    <option value="exam">Exam Focus</option>
+                    <option value="definitions">Definitions</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Topic / Chapter</label>
+                <input type="text" id="sum-topic" class="form-control" placeholder="e.g. Normalization, Paging, TCP/IP..." required>
+              </div>
+              <button type="submit" class="btn btn-primary" id="sum-btn">Generate Summary</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="summary-result" class="hidden">
+          <div class="card">
+            <div class="card-header flex justify-between items-center">
+              <span>📄 Summary</span>
+              <button onclick="copyText('summary-output')" class="btn btn-secondary btn-sm">📋 Copy</button>
+            </div>
+            <div class="card-body">
+              <div id="summary-output"></div>
+            </div>
+            <div class="card-body" id="summary-sources" style="border-top:1px solid var(--border);padding-top:12px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast-container"></div>
+<script src="/static/js/main.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  requireAuth();
+  await populateSubjectSelect(document.getElementById('sum-subject'));
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('subject_id')) document.getElementById('sum-subject').value = params.get('subject_id');
+
+  document.getElementById('summary-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('sum-btn');
+    btn.disabled = true; btn.textContent = 'Generating...';
+    showLoading('Generating summary...');
+
+    const { ok, data } = await api('/api/ai/summary', { method: 'POST', body: JSON.stringify({
+      subject_id: document.getElementById('sum-subject').value,
+      topic: document.getElementById('sum-topic').value,
+      summary_type: document.getElementById('sum-type').value,
+    })});
+    hideLoading(); btn.disabled = false; btn.textContent = 'Generate Summary';
+
+    if (!ok) { showToast(data.error || 'Failed', 'error'); return; }
+
+    document.getElementById('summary-result').classList.remove('hidden');
+    renderAI(data.summary || 'No summary generated.', document.getElementById('summary-output'));
+
+    const srcEl = document.getElementById('summary-sources');
+    if (data.sources && data.sources.length) {
+      srcEl.innerHTML = '<strong class="text-sm">Sources:</strong><br>' + data.sources.map(s => `<span class="badge badge-info mr-1">📄 ${s.filename} p.${s.page_number}</span>`).join(' ');
+    }
+    document.getElementById('summary-result').scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+function copyText(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.innerText).then(() => showToast('Copied!', 'success'));
+}
+</script>
+</body>
+</html>
